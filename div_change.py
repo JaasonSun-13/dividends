@@ -60,19 +60,38 @@ sp500_tickers = fetch_sp500_tickers()
 print(f"Found {len(sp500_tickers)} tickers:")
 print(sp500_tickers)
 
+count = 0
 for tick in sp500_tickers:
+    if count == 20:
+        break
+    count+=1
     df = blp.bdh(
         tickers=tick+' Equity',
-        flds=['EQY_DVD_YLD_IND'],
+        flds=['DIVIDEND_INDICATED_YIELD','EQY_INST_BUYS','EQY_INST_SELLS'],
         start_date='2014-01-01',
         end_date='2024-01-01',
         Per='D'
 )
-    start_yield=df["EQY_DVD_YLD_IND"][0]
-    for tick_yield in df['EQY_DVD_YLD_IND']:
-        df['YILD_PCT_CHANGE']=tick_yield/start_yield*100
-    for yield_pct_change in df['YILD_PCT_CHANGE']:
+    col = (tick+' Equity', "DIVIDEND_INDICATED_YIELD")
+    buyers = (tick+' Equity', "EQY_INST_BUYS")
+    sellers = (tick+' Equity', "EQY_INST_SELLS")
+    fld_list=[col , buyers , sellers]
+
+    if not all(col in df.columns for col in  fld_list):
+        print( f'tick {tick} missing data')
+        continue
     
-        if abs(tick_yield-start_yield)<0.1:
-            df=df[df['EQY_DVD_YLD_IND'] if ]
-    print(df.tail())
+    if not df.empty:
+
+        df['YILD_PCT_CHANGE'] = df[col].pct_change() * 100
+        df['NET_BUYERS']=(df[buyers]-df[sellers])
+        df['NET_BUYERS_10D_AVG'] = df['NET_BUYERS'].rolling(window=10).mean()
+        df['NET_BUYERS_VS_10D'] = df['NET_BUYERS'] / df['NET_BUYERS_10D_AVG']  
+        
+        df_filtered = df[df['YILD_PCT_CHANGE'].abs() > 10]
+        print(df)
+        df.to_excel(f'{tick}.xlsx')
+        if not df_filtered.empty:
+            print(df[["YILD_PCT_CHANGE", 'NET_BUYERS_VS_10D']])
+        # print(df.columns)
+
