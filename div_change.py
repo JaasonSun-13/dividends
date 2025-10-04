@@ -1,6 +1,9 @@
 import blpapi
 from xbbg import blp
 from blpapi import SessionOptions, Session, Service
+import pandas as pd 
+
+# 'python -m pip install --index-url=https://blpapi.bloomberg.com/repository/releases/python/simple/ blpapi'
 
 def fetch_sp500_tickers():
     # Bloomberg API service and request details
@@ -61,21 +64,26 @@ print(f"Found {len(sp500_tickers)} tickers:")
 print(sp500_tickers)
 
 count = 0
+df_output = pd.DataFrame()
 for tick in sp500_tickers:
-    if count == 20:
-        break
+    # if count == 5:
+    #     break
     count+=1
     df = blp.bdh(
         tickers=tick+' Equity',
         flds=['DIVIDEND_INDICATED_YIELD','EQY_INST_BUYS','EQY_INST_SELLS'],
         start_date='2014-01-01',
-        end_date='2024-01-01',
+        end_date='2025-10-04',
         Per='D'
 )
     col = (tick+' Equity', "DIVIDEND_INDICATED_YIELD")
     buyers = (tick+' Equity', "EQY_INST_BUYS")
     sellers = (tick+' Equity', "EQY_INST_SELLS")
     fld_list=[col , buyers , sellers]
+    col1 = "DIVIDEND_INDICATED_YIELD"
+    buyers1 =  "EQY_INST_BUYS"
+    sellers1 = "EQY_INST_SELLS"
+    fld_list_single=[col1 , buyers1 , sellers1]
 
     if not all(col in df.columns for col in  fld_list):
         print( f'tick {tick} missing data')
@@ -85,13 +93,22 @@ for tick in sp500_tickers:
 
         df['YILD_PCT_CHANGE'] = df[col].pct_change() * 100
         df['NET_BUYERS']=(df[buyers]-df[sellers])
-        df['NET_BUYERS_10D_AVG'] = df['NET_BUYERS'].rolling(window=10).mean()
-        df['NET_BUYERS_VS_10D'] = df['NET_BUYERS'] / df['NET_BUYERS_10D_AVG']  
+        # df['NET_BUYERS_10D_AVG'] = df['NET_BUYERS'].rolling(window=10).mean()
+        # df['NET_BUYERS_VS_10D'] = df['NET_BUYERS'] / df['NET_BUYERS_10D_AVG']  
         
-        df_filtered = df[df['YILD_PCT_CHANGE'].abs() > 10]
-        print(df)
-        df.to_excel(f'{tick}.xlsx')
-        if not df_filtered.empty:
-            print(df[["YILD_PCT_CHANGE", 'NET_BUYERS_VS_10D']])
-        # print(df.columns)
+        # df_filtered = df[df['YILD_PCT_CHANGE'].abs() > 10]
+        output_heads_single=[
+            'YILD_PCT_CHANGE',
+            'NET_BUYERS',
+            ]
+        for colhead, colhead1 in zip(fld_list, fld_list_single):
+            df_output[f'{tick}', f'{colhead1}']=df[colhead]
+        for colhead in output_heads_single:
+            df_output[f'{tick}', f'{colhead}']=df[colhead]
+df_output.columns = pd.MultiIndex.from_tuples(df_output.columns)
+print(df_output)
+df_output.to_excel('snp500.xlsx')
+
+    
+    
 
