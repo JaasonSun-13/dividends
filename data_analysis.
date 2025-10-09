@@ -1,0 +1,8 @@
+import numpy as np
+import pandas as pd 
+df=pd.read_excel('snp500.xlsx', header=[0,1])
+
+
+net_buyers = df.xs('NET_BUYERS', level=1, axis=1)
+
+
